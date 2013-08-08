@@ -1,0 +1,15 @@
+OutputPrefix	trial
+NTime		100
+NLatitude	100	
+NLongitude	100
+PsToPo		2.7e-3
+StarMass   	1.0
+StarLum    	1.0
+PlanetMass 	1.0
+SemiMajorAxis	1.0
+Eccentricity	0.0
+Inclination	0.0
+AscendingNode	0.0
+Periapsis	0.0
+
+
