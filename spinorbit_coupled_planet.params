@@ -6,6 +6,7 @@ PsToPo		2.7e-3
 StarMass   	1.0
 StarLum    	1.0
 PlanetMass 	1.0
+Obliquity	0.411
 SemiMajorAxis	1.0
 Eccentricity	0.0
 Inclination	0.0

@@ -36,7 +36,7 @@ int main()
     int nTime, nLongitude, nLatitude, nlambda;
     string starname, planetname;
     double mstar, radstar, lstar, totalMass, G;
-    double mplanet, mplanetearth, radplanet;
+    double mplanet, mplanetearth, radplanet,obliquity;
     double long_apparent, dlat, dlong, rdotn;
     double semimaj, ecc, inc, longascend, argper, time;
     double PsToPo, Teff, Porbit, Pspin, dt;
@@ -128,6 +128,11 @@ int main()
 
 	    }
 
+	if(par=="Obliquity")
+	    {
+	iss >> obliquity;
+	    }
+
 	if (par == "SemiMajorAxis")
 	    {
 	    iss >> semimaj;
@@ -183,14 +188,6 @@ int main()
     Star star(starname, mstar, radstar, starpos, starvel, Teff, nlambda);
     Planet planet(planetname, mplanet, radplanet, semimaj, ecc, inc, time,
 	    longascend, argper, G, totalMass);
-
-    cout << "Planet Position, Velocity " << endl;
-    cout << planet.getPosition().elements[0] << "  "
-	    << planet.getPosition().elements[1] << "  "
-	    << planet.getPosition().elements[2] << "  " << endl;
-    cout << planet.getVelocity().elements[0] << "  "
-	    << planet.getVelocity().elements[1] << "  "
-	    << planet.getVelocity().elements[2] << "  " << endl;
 
     Porbit = sqrt(4.0 * pi * pi * semimaj * semimaj * semimaj / (G * totalMass));
     Pspin = Porbit * PsToPo;
@@ -252,8 +249,12 @@ int main()
 
 		surface = surface.unitVector();
 
-		// If necessary, rotate surface vector by obliquity (TODO)
-		//surface = surface.rotateX(-obliquity);
+		// If necessary, rotate surface vector by obliquity
+
+		if(obliquity !=0.0)
+		    {
+		    surface.rotateX(obliquity);
+		    }
 
 		// take the dot product with the unit position vector
 

@@ -354,7 +354,7 @@ void Body::calcTrueAnomaly(double G, double totalMass, double time)
 	fdashE = 1 - eccentricity * cos(Enext);
 
 	tolerance = (Enext - Eold);
-	cout << Eold << "  " << Enext << "  " << fE << "   " << fdashE << "   " <<tolerance << endl;
+	//cout << Eold << "  " << Enext << "  " << fE << "   " << fdashE << "   " <<tolerance << endl;
 	Eold = Enext;
 	}
 
@@ -367,7 +367,7 @@ void Body::calcTrueAnomaly(double G, double totalMass, double time)
     //trueAnomaly = (cos(eccentricAnomaly) - eccentricity) / (1.0 - eccentricity * cos(eccentricAnomaly));
     //trueAnomaly = acos(trueAnomaly);
 
-    cout << meanAnomaly << "   " << eccentricAnomaly << "   " << trueAnomaly << endl;
+    //cout << meanAnomaly << "   " << eccentricAnomaly << "   " << trueAnomaly << endl;
 
     }
 
@@ -438,7 +438,7 @@ void Body::calcVectorFromOrbit(double G, double totmass)
     velocity.rotateZ(-1 * longitudeAscendingNode);
 	}
 
-    cout <<  magpos <<"  " << trueAnomaly<<"  " << position.elements[0] <<"  "<< position.elements[1] <<"  "<< position.elements[2] << endl;
+    //cout <<  magpos <<"  " << trueAnomaly<<"  " << position.elements[0] <<"  "<< position.elements[1] <<"  "<< position.elements[2] << endl;
 
     }
 
