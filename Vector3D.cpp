@@ -188,7 +188,7 @@ void Vector3D::rotateZ(double angle)
 
     elements[0] = oldvec.elements[0]*cos(angle) - oldvec.elements[1]*sin(angle);
     elements[1] = oldvec.elements[0]*sin(angle) + oldvec.elements[1]*cos(angle);
-    elements[2] = oldvec.elements[3];
+    elements[2] = oldvec.elements[2];
 
     }
 

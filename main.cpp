@@ -23,25 +23,33 @@
 #include <sstream>
 using namespace std;
 
+double safeAcos (double x)
+  {
+  if (x < -1.0) x = -1.0 ;
+  else if (x > 1.0) x = 1.0 ;
+  return acos (x) ;
+  }
+
 int main()
     {
 
     string par;
     string line;
     string fileString, numString, prefixString;
-    char inputFile[100],outputFile[100];
+    char inputFile[100], outputFile[100];
 
     double mEarthToMSol = 3.0034e-6;
 
     int nTime, nLongitude, nLatitude, nlambda;
     string starname, planetname;
     double mstar, radstar, lstar, totalMass, G;
-    double mplanet, mplanetearth, radplanet,obliquity;
+    double mplanet, mplanetearth, radplanet, obliquity;
     double long_apparent, dlat, dlong, rdotn;
     double semimaj, ecc, inc, longascend, argper, time;
     double PsToPo, Teff, Porbit, Pspin, dt;
+    double noon, hourAngle, declination;
 
-    FILE * output;
+    FILE * output, *outputlog;
 
     printf("  \n");
     printf("*********************************************** \n");
@@ -54,7 +62,7 @@ int main()
 
     fileString = "spinorbit_coupled_planet.params";
 
-    printf("Reading in parameter file");
+    printf("Reading in parameter file \n");
 
     strcpy(inputFile, fileString.c_str());
 
@@ -74,11 +82,12 @@ int main()
 	istringstream iss(line);
 	iss >> par;
 
-	if(par =="OutputPrefix"){
+	if (par == "OutputPrefix")
+	    {
 
 	    iss >> prefixString;
 	    prefixString = prefixString + '.';
-	}
+	    }
 
 	if (par == "NTime")
 	    {
@@ -124,13 +133,13 @@ int main()
 	if (par == "PlanetMass")
 	    {
 	    iss >> mplanetearth; // Read in in earth masses
-	    mplanet = mplanetearth*mEarthToMSol; // convert to Solar masses
+	    mplanet = mplanetearth * mEarthToMSol; // convert to Solar masses
 
 	    }
 
-	if(par=="Obliquity")
+	if (par == "Obliquity")
 	    {
-	iss >> obliquity;
+	    iss >> obliquity;
 	    }
 
 	if (par == "SemiMajorAxis")
@@ -168,13 +177,12 @@ int main()
 
     // Number of zeros for output files
 
-    double nzeros = int(log10(nTime)+1);
+    double nzeros = int(log10(nTime) + 1);
 
     // set up Star and Planet Objects
 
-
     totalMass = mstar + mplanet;
-    G = 4.0*pi*pi;
+    G = 4.0 * pi * pi;
 
     Vector3D starpos(0.0, 0.0, 0.0);
     Vector3D starvel(0.0, 0.0, 0.0);
@@ -189,21 +197,25 @@ int main()
     Planet planet(planetname, mplanet, radplanet, semimaj, ecc, inc, time,
 	    longascend, argper, G, totalMass);
 
-    Porbit = sqrt(4.0 * pi * pi * semimaj * semimaj * semimaj / (G * totalMass));
+    Porbit = sqrt(
+	    4.0 * pi * pi * semimaj * semimaj * semimaj / (G * totalMass));
     Pspin = Porbit * PsToPo;
 
     dt = Porbit / float(nTime);
 
-    // Set up arrays to store fluxes
+    // Set up array to store fluxes, and altitude and azimuth of star
     double flux[nLongitude][nLatitude];
+
+    double altitude[nLongitude][nLatitude];
+    double azimuth[nLongitude][nLatitude];
 
     // Arrays to store latitude and longitude
 
     double latitude[nLatitude];
     double longitude[nLongitude];
 
-    dlat = pi/float(nLatitude);
-    dlong = 2.0*pi/float(nLongitude);
+    dlat = pi / float(nLatitude);
+    dlong = 2.0 * pi / float(nLongitude);
 
     for (int j = 0; j < nLongitude; j++)
 	{
@@ -213,6 +225,14 @@ int main()
 	{
 	latitude[k] = k * dlat;
 	}
+
+    // Set up output log file
+
+    fileString = prefixString + "log";
+
+    strcpy(outputFile, fileString.c_str());
+
+    outputlog = fopen(outputFile, "w");
 
     // Begin Loop over time
 
@@ -226,32 +246,37 @@ int main()
 	planet.calcTrueAnomaly(G, totalMass, time);
 	planet.calcVectorFromOrbit(G, totalMass);
 
-	Vector3D pos = planet.getPosition().unitVector();
+	Vector3D pos = planet.getPosition();
 
 	double magpos = pos.magVector();
 
 	Vector3D unitpos = pos.unitVector();
+
+	double noon_tolerance = 1.0e30;
+
+	noon = fmod(2.0 * pi * time / Pspin , 2.0*pi);
 
 	// Now begin calculation over latitude and longitude points
 
 	for (int j = 0; j < nLongitude; j++)
 	    {
 	    // Account for planet rotation
-	    long_apparent = longitude[j] + 2.0 * pi * time / Pspin;
+	    long_apparent = fmod(longitude[j] + 2.0 * pi * time / Pspin, 2.0*pi);
 	    for (int k = 0; k < nLatitude; k++)
 
 		{
 
 		// construct surface normal vector
 
-		Vector3D surface(sin(latitude[k]) * cos(long_apparent), sin(
-			latitude[k]) * sin(long_apparent), cos(latitude[k]));
+		Vector3D surface(sin(latitude[k]) * cos(long_apparent),
+			sin(latitude[k]) * sin(long_apparent),
+			cos(latitude[k]));
 
 		surface = surface.unitVector();
 
 		// If necessary, rotate surface vector by obliquity
 
-		if(obliquity !=0.0)
+		if (obliquity != 0.0)
 		    {
 		    surface.rotateX(obliquity);
 		    }
@@ -259,6 +284,14 @@ int main()
 		// take the dot product with the unit position vector
 
 		rdotn = unitpos.dotProduct(surface);
+
+		// Is this longitude noon? Check using rdotn
+
+		//if (fabs(rdotn - 1.0) < noon_tolerance)
+		//    {
+		 //   noon = longitude[j];
+		  //  noon_tolerance = fabs(rdotn - 1.0);
+		  //  }
 
 		// Calculate fluxes
 
@@ -275,33 +308,92 @@ int main()
 		}
 	    }
 
+	// Calculate position on sky, and angular size
+
+	// location of noon previously calculated
+	// Declination is rdotn at the equator at noon
+
+	// Now use hourAngle and Declination to calculate altitude and azimuth as a function of latitude and longitude
+
+	for (int j = 0; j < nLongitude; j++)
+	    {
+
+	    // Distance between longitude and noon = hourAngle
+
+	    hourAngle = longitude[j] - noon;
+
+	    // Declination - angle between planet's position vector and equator (at noon longitude)
+
+	    Vector3D surface(unitpos.elements[0], unitpos.elements[1], unitpos.elements[2]);
+
+	    // Rotate given obliquity
+	    if (obliquity != 0.0)
+		{
+		surface.rotateX(obliquity);
+		}
+
+	    rdotn = unitpos.dotProduct(surface);
+	    declination = safeAcos(rdotn);
+
+	    cout << surface.elements[0] << "   " << surface.elements[1] << "   "
+		    << surface.elements[2] << endl;
+	    cout << unitpos.elements[0] << "   " << unitpos.elements[1] << "   "
+		    << unitpos.elements[2] << endl;
+	    cout << "Hour Angle, Declination " << "   " << time << "   " << longitude[j] << "   " << noon << "  "<< hourAngle
+		    << "   " << rdotn << "   " << declination << endl;
+
+	    for (int k = 0; k < nLatitude; k++)
+		{
+
+		altitude[j][k] = cos(declination) * cos(latitude[k])
+			* cos(hourAngle) + sin(declination) * sin(latitude[k]);
+		altitude[j][k] = asin(altitude[j][k]);
+
+		azimuth[j][k] = atan2(sin(hourAngle),sin(latitude[k] * cos(declination) - cos(latitude[k] * tan(declination))));
+
+		}
+	    }
+
 	//Send the data to file
+
+	// First, write data to log file
+
+	fprintf(outputlog,
+		"%+.4E  %+.4E  %+.4E  %+.4E  %+.4E  %+.4E  %+.4E  %+.4E \n",
+		time, Porbit, Pspin, magpos, planet.getTrueAnomaly(),
+		planet.getPosition().elements[0],
+		planet.getPosition().elements[1],
+		planet.getPosition().elements[2]);
+	fflush(outputlog);
+
+	// Now, write snapshot of latitude/longitude to file
 
 	// Create filename
 
 	ostringstream convert;
-	convert << i+1;
+	convert << i + 1;
 
 	numString = convert.str();
 
 	while (numString.length() < nzeros)
-		{
-		numString = "0" + numString;
-		}
+	    {
+	    numString = "0" + numString;
+	    }
 
-	fileString = prefixString+numString;
+	fileString = prefixString + numString;
 
 	strcpy(outputFile, fileString.c_str());
 
 	output = fopen(outputFile, "w");
-	fprintf(output, "%+.4E %i %i %+.4E  %+.4E  %+.4E %+.4E  %+.4E\n", time, nLatitude,nLongitude, magpos, planet.getTrueAnomaly(), planet.getPosition().elements[0],planet.getPosition().elements[1],planet.getPosition().elements[2]);
+	fprintf(output, "%+.4E %i %i \n", time, nLatitude, nLongitude);
 
 	for (int j = 0; j < nLongitude; j++)
 	    {
 	    for (int k = 0; k < nLatitude; k++)
 		{
-		fprintf(output, "%+.4E  %+.4E  %+.4E\n", longitude[j],
-			latitude[k], flux[j][k]);
+		fprintf(output, "%+.4E  %+.4E  %+.4E %+.4E  %+.4E \n",
+			longitude[j], latitude[k], flux[j][k], altitude[j][k],
+			azimuth[j][k]);
 		}
 	    }
 	fflush(output);
@@ -309,6 +401,7 @@ int main()
 
 	}
 
+    fclose(outputlog);
     // End of program
     return 0;
     }
