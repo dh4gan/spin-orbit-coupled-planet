@@ -23,12 +23,16 @@
 #include <sstream>
 using namespace std;
 
-double safeAcos (double x)
-  {
-  if (x < -1.0) x = -1.0 ;
-  else if (x > 1.0) x = 1.0 ;
-  return acos (x) ;
-  }
+// Simple function to stop acos becoming infinite if abs(x) > 1.0
+
+double safeAcos(double x)
+    {
+    if (x < -1.0)
+	x = -1.0;
+    else if (x > 1.0)
+	x = 1.0;
+    return acos(x);
+    }
 
 int main()
     {
@@ -197,19 +201,23 @@ int main()
     Planet planet(planetname, mplanet, radplanet, semimaj, ecc, inc, time,
 	    longascend, argper, G, totalMass);
 
-    Porbit = sqrt(
-	    4.0 * pi * pi * semimaj * semimaj * semimaj / (G * totalMass));
+    // Set up time parameters
+
+    Porbit
+	    = sqrt(4.0 * pi * pi * semimaj * semimaj * semimaj
+		    / (G * totalMass));
     Pspin = Porbit * PsToPo;
 
     dt = Porbit / float(nTime);
 
     // Set up array to store fluxes, and altitude and azimuth of star
+
     double flux[nLongitude][nLatitude];
 
     double altitude[nLongitude][nLatitude];
     double azimuth[nLongitude][nLatitude];
 
-    // Arrays to store latitude and longitude
+    // Set up arrays to store latitude and longitude
 
     double latitude[nLatitude];
     double longitude[nLongitude];
@@ -252,25 +260,48 @@ int main()
 
 	Vector3D unitpos = pos.unitVector();
 
-	double noon_tolerance = 1.0e30;
+	// Longitude corresponding to noon - assumes noon at t=0 is 0
+	noon = fmod(2.0 * pi * time / Pspin, 2.0 * pi);
 
-	noon = fmod(2.0 * pi * time / Pspin , 2.0*pi);
+	// Declination of the Sun - angle between planet's position vector and equator (at noon)
+
+	Vector3D surface(unitpos.elements[0], unitpos.elements[1],
+		unitpos.elements[2]);
+
+	// Rotate this vector if planet has non-zero obliquity
+	if (obliquity != 0.0)
+	    {
+	    surface.rotateX(obliquity);
+	    }
+
+	rdotn = unitpos.dotProduct(surface);
+	declination = safeAcos(rdotn);
 
 	// Now begin calculation over latitude and longitude points
 
 	for (int j = 0; j < nLongitude; j++)
 	    {
-	    // Account for planet rotation
-	    long_apparent = fmod(longitude[j] + 2.0 * pi * time / Pspin, 2.0*pi);
+	    // Rotate planet according to its spin period
+
+	    long_apparent = fmod(longitude[j] + 2.0 * pi * time / Pspin, 2.0
+		    * pi);
+
+	    // Calculate hour angle - distance between current longitude and noon
+
+	    // Distance between longitude and noon = hourAngle
+
+	    hourAngle = longitude[j] - noon;
+
+	    // Loop over latitude
+
 	    for (int k = 0; k < nLatitude; k++)
 
 		{
 
 		// construct surface normal vector
 
-		Vector3D surface(sin(latitude[k]) * cos(long_apparent),
-			sin(latitude[k]) * sin(long_apparent),
-			cos(latitude[k]));
+		Vector3D surface(sin(latitude[k]) * cos(long_apparent), sin(
+			latitude[k]) * sin(long_apparent), cos(latitude[k]));
 
 		surface = surface.unitVector();
 
@@ -285,15 +316,8 @@ int main()
 
 		rdotn = unitpos.dotProduct(surface);
 
-		// Is this longitude noon? Check using rdotn
-
-		//if (fabs(rdotn - 1.0) < noon_tolerance)
-		//    {
-		 //   noon = longitude[j];
-		  //  noon_tolerance = fabs(rdotn - 1.0);
-		  //  }
-
 		// Calculate fluxes
+		// if position.surface is less than zero, long/lat location is not illuminated
 
 		if (rdotn > 0.0)
 		    {
@@ -305,51 +329,14 @@ int main()
 		    flux[j][k] = 0.0;
 		    }
 
-		}
-	    }
+		// Calculate altitude and azimuthal position on sky, and angular size
 
-	// Calculate position on sky, and angular size
-
-	// location of noon previously calculated
-	// Declination is rdotn at the equator at noon
-
-	// Now use hourAngle and Declination to calculate altitude and azimuth as a function of latitude and longitude
-
-	for (int j = 0; j < nLongitude; j++)
-	    {
-
-	    // Distance between longitude and noon = hourAngle
-
-	    hourAngle = longitude[j] - noon;
-
-	    // Declination - angle between planet's position vector and equator (at noon longitude)
-
-	    Vector3D surface(unitpos.elements[0], unitpos.elements[1], unitpos.elements[2]);
-
-	    // Rotate given obliquity
-	    if (obliquity != 0.0)
-		{
-		surface.rotateX(obliquity);
-		}
-
-	    rdotn = unitpos.dotProduct(surface);
-	    declination = safeAcos(rdotn);
-
-	    cout << surface.elements[0] << "   " << surface.elements[1] << "   "
-		    << surface.elements[2] << endl;
-	    cout << unitpos.elements[0] << "   " << unitpos.elements[1] << "   "
-		    << unitpos.elements[2] << endl;
-	    cout << "Hour Angle, Declination " << "   " << time << "   " << longitude[j] << "   " << noon << "  "<< hourAngle
-		    << "   " << rdotn << "   " << declination << endl;
-
-	    for (int k = 0; k < nLatitude; k++)
-		{
-
-		altitude[j][k] = cos(declination) * cos(latitude[k])
-			* cos(hourAngle) + sin(declination) * sin(latitude[k]);
+		altitude[j][k] = cos(declination) * cos(latitude[k]) * cos(
+			hourAngle) + sin(declination) * sin(latitude[k]);
 		altitude[j][k] = asin(altitude[j][k]);
 
-		azimuth[j][k] = atan2(sin(hourAngle),sin(latitude[k] * cos(declination) - cos(latitude[k] * tan(declination))));
+		azimuth[j][k] = atan2(sin(hourAngle), sin(latitude[k] * cos(
+			declination) - cos(latitude[k] * tan(declination))));
 
 		}
 	    }
