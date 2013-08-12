@@ -277,6 +277,7 @@ int main()
 	rdotn = unitpos.dotProduct(surface);
 	declination = safeAcos(rdotn);
 
+	cout << "Time "<< time<< "  Noon  " << noon << "  Declination  "<<declination << endl;
 	// Now begin calculation over latitude and longitude points
 
 	for (int j = 0; j < nLongitude; j++)
@@ -289,9 +290,19 @@ int main()
 	    // Calculate hour angle - distance between current longitude and noon
 
 	    // Distance between longitude and noon = hourAngle
+	    // hour angle between -180 and +180
 
 	    hourAngle = longitude[j] - noon;
+	    if(hourAngle < -pi)
+		{
+		hourAngle=hourAngle + 2.0*pi;
+		}
+	    else if(hourAngle > pi)
+		{
+		hourAngle = -2.0*pi +hourAngle;
+		}
 
+	    cout << "        longitude  " << longitude[j] << "  hour angle " << hourAngle << endl;
 	    // Loop over latitude
 
 	    for (int k = 0; k < nLatitude; k++)
@@ -330,13 +341,39 @@ int main()
 		    }
 
 		// Calculate altitude and azimuthal position on sky, and angular size
+		// Formulae not exactly as used normally
+		// As we measure latitudes from 0 to 180, not -90 to 90, some sines have become cosines, and vice versa
+		// (some extra plus and minus signs as a result)
 
-		altitude[j][k] = cos(declination) * cos(latitude[k]) * cos(
-			hourAngle) + sin(declination) * sin(latitude[k]);
+		//altitude[j][k] = cos(declination) * cos(latitude[k]) * cos(
+		//	hourAngle) + sin(declination) * sin(latitude[k]);  // These calculations assume lat->0,180 deg
+
+		altitude[j][k] = cos(declination) * cos(hourAngle) * sin(
+					latitude[k]) - sin(declination) * cos(latitude[k]);  // These calculations assume lat->-90,90 deg
+
+
 		altitude[j][k] = asin(altitude[j][k]);
 
-		azimuth[j][k] = atan2(sin(hourAngle), sin(latitude[k] * cos(
-			declination) - cos(latitude[k] * tan(declination))));
+		// Azimuth angle measured from north, clockwise
+
+		if(altitude[j][k]!=0.0){
+		azimuth[j][k] = (sin(declination)*cos(latitude[k]) - cos(declination)*sin(latitude[k])*cos(hourAngle))/altitude[j][k];
+		azimuth[j][k] = safeAcos(azimuth[j][k]);
+		}
+		else
+		    {
+		azimuth[j][k] = 0.0;
+		    }
+
+		// If hour angle positive (afternoon) azimuth is > 180
+
+		if(hourAngle>0.0)
+		    {
+		    azimuth[j][k] = 2.0*pi - azimuth[j][k];
+
+		    }
+
+
 
 		}
 	    }
