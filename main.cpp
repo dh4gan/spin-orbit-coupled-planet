@@ -43,6 +43,7 @@ int main()
     char inputFile[100], outputFile[100];
 
     double mEarthToMSol = 3.0034e-6;
+    Vector3D zvector(0.0,0.0,1.0);
 
     int nTime, nLongitude, nLatitude, nlambda;
     string starname, planetname;
@@ -51,7 +52,7 @@ int main()
     double long_apparent, dlat, dlong, rdotn;
     double semimaj, ecc, inc, longascend, argper, time;
     double PsToPo, Teff, Porbit, Pspin, dt;
-    double noon, hourAngle, declination;
+    double noon, declination;
 
     FILE * output, *outputlog;
 
@@ -221,6 +222,7 @@ int main()
 
     double latitude[nLatitude];
     double longitude[nLongitude];
+    double hourAngle[nLongitude];
 
     dlat = pi / float(nLatitude);
     dlong = 2.0 * pi / float(nLongitude);
@@ -292,17 +294,27 @@ int main()
 	    // Distance between longitude and noon = hourAngle
 	    // hour angle between -180 and +180
 
-	    hourAngle = longitude[j] - noon;
-	    if(hourAngle < -pi)
+	    Vector3D surface(cos(long_apparent), sin(long_apparent), 0.0);
+
+	    rdotn = unitpos.dotProduct(surface);
+	    hourAngle[j] = acos(rdotn);
+
+	    if((unitpos.crossProduct(surface)).dotProduct(zvector) > 0.0)
 		{
-		hourAngle=hourAngle + 2.0*pi;
-		}
-	    else if(hourAngle > pi)
-		{
-		hourAngle = -2.0*pi +hourAngle;
+		hourAngle[j] = -hourAngle[j];
 		}
 
-	    cout << "        longitude  " << longitude[j] << "  hour angle " << hourAngle << endl;
+	    //hourAngle[j] = noon - longitude[j];
+	   /* if(hourAngle[j] < -pi)
+		{
+		hourAngle[j]=hourAngle[j] + 2.0*pi;
+		}
+	    else if(hourAngle[j] > pi)
+		{
+		hourAngle[j] = -2.0*pi +hourAngle[j];
+		}
+	    */
+	    cout << "        longitude  " << longitude[j] << "  hour angle " << hourAngle[j] << endl;
 	    // Loop over latitude
 
 	    for (int k = 0; k < nLatitude; k++)
@@ -346,9 +358,9 @@ int main()
 		// (some extra plus and minus signs as a result)
 
 		//altitude[j][k] = cos(declination) * cos(latitude[k]) * cos(
-		//	hourAngle) + sin(declination) * sin(latitude[k]);  // These calculations assume lat->0,180 deg
+		//	hourAngle[j]) + sin(declination) * sin(latitude[k]);  // These calculations assume lat->0,180 deg
 
-		altitude[j][k] = cos(declination) * cos(hourAngle) * sin(
+		altitude[j][k] = cos(declination) * cos(hourAngle[j]) * sin(
 					latitude[k]) - sin(declination) * cos(latitude[k]);  // These calculations assume lat->-90,90 deg
 
 
@@ -356,9 +368,11 @@ int main()
 
 		// Azimuth angle measured from north, clockwise
 
-		if(altitude[j][k]!=0.0){
-		azimuth[j][k] = (sin(declination)*cos(latitude[k]) - cos(declination)*sin(latitude[k])*cos(hourAngle))/altitude[j][k];
-		azimuth[j][k] = safeAcos(azimuth[j][k]);
+		if(cos(altitude[j][k])*cos(latitude[k])!=0.0){
+		//azimuth[j][k] = (sin(declination)*cos(latitude[k]) - cos(declination)*sin(latitude[k])*cos(hourAngle[j]))/cos(altitude[j][k]);
+		azimuth[j][k] = (sin(altitude[j][k])*sin(latitude[k]) - sin(declination))/(cos(altitude[j][k] *cos(latitude[k])));
+
+		    azimuth[j][k] = safeAcos(azimuth[j][k]);
 		}
 		else
 		    {
@@ -367,10 +381,9 @@ int main()
 
 		// If hour angle positive (afternoon) azimuth is > 180
 
-		if(hourAngle>0.0)
+		if(hourAngle[j]>0.0)
 		    {
 		    azimuth[j][k] = 2.0*pi - azimuth[j][k];
-
 		    }
 
 
@@ -415,9 +428,9 @@ int main()
 	    {
 	    for (int k = 0; k < nLatitude; k++)
 		{
-		fprintf(output, "%+.4E  %+.4E  %+.4E %+.4E  %+.4E \n",
-			longitude[j], latitude[k], flux[j][k], altitude[j][k],
-			azimuth[j][k]);
+		fprintf(output, "%+.4E  %+.4E  %+.4E  %+.4E  %+.4E  %+.4E \n",
+			longitude[j], latitude[k], flux[j][k],altitude[j][k],
+			azimuth[j][k], hourAngle[j]);
 		}
 	    }
 	fflush(output);
