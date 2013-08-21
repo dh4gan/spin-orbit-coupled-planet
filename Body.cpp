@@ -101,13 +101,12 @@ Body::Body(string &namestring, double &m, double &rad, double semimaj,
     meanAnomaly = 0.0;
     eccentricAnomaly = 0.0;
 
-    calcTrueAnomaly(G,totalMass, time);
-
     argumentPeriapsis = argper;
 
     longitudeAscendingNode = longascend;
     longitudePeriapsis = argper + longascend;
 
+    calcTrueAnomaly(G,totalMass, time);
     calcVectorFromOrbit(G, totalMass);
     }
 
@@ -321,7 +320,7 @@ void Body::calcTrueAnomaly(double G, double totalMass, double time)
     period = calcPeriod(G,totalMass);
 
     // Calculate mean anomaly
-    meanAnomaly = 2.0*pi*time / period;
+    meanAnomaly = fmod(2.0*pi*time / period, 2.0*pi);
 
     // If orbit is circular, meanAnomaly and eccentricAnomaly are equal
 
@@ -331,7 +330,7 @@ void Body::calcTrueAnomaly(double G, double totalMass, double time)
 	}
     else
 	{
-    // calculate eccentric anomaly (Newton raphson iteration)
+    // calculate eccentric anomaly (Newton-Raphson iteration)
 
     Eold = eccentricAnomaly;
 
@@ -354,7 +353,6 @@ void Body::calcTrueAnomaly(double G, double totalMass, double time)
 	fdashE = 1 - eccentricity * cos(Enext);
 
 	tolerance = (Enext - Eold);
-	//cout << Eold << "  " << Enext << "  " << fE << "   " << fdashE << "   " <<tolerance << endl;
 	Eold = Enext;
 	}
 
@@ -364,10 +362,6 @@ void Body::calcTrueAnomaly(double G, double totalMass, double time)
     // Finally, calculate true anomaly
 
     trueAnomaly = 2.0*atan2(sqrt(1.0+eccentricity)*sin(eccentricAnomaly/2.0),sqrt(1.0-eccentricity)*cos(eccentricAnomaly/2.0));
-    //trueAnomaly = (cos(eccentricAnomaly) - eccentricity) / (1.0 - eccentricity * cos(eccentricAnomaly));
-    //trueAnomaly = acos(trueAnomaly);
-
-    //cout << meanAnomaly << "   " << eccentricAnomaly << "   " << trueAnomaly << endl;
 
     }
 
@@ -437,8 +431,6 @@ void Body::calcVectorFromOrbit(double G, double totmass)
     position.rotateZ(-1 * longitudeAscendingNode);
     velocity.rotateZ(-1 * longitudeAscendingNode);
 	}
-
-    //cout <<  magpos <<"  " << trueAnomaly<<"  " << position.elements[0] <<"  "<< position.elements[1] <<"  "<< position.elements[2] << endl;
 
     }
 
@@ -719,9 +711,6 @@ void Body::calcSnapCrackle(double G, vector<Body*> bodyarray,
 		crackleterm4);
 
 	crackle = crackleterm.relativeVector(crackle);
-
-	//bodyarray[b]->setCrackle(crackle);
-	//bodyarray[b]->setSnap(snap);
 
 	} // End of loop
     // End of method

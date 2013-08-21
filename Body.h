@@ -22,9 +22,9 @@ using namespace std;
 class Body {
 public:
 	Body();
-	Body(string &namestring, double &m, double &r, Vector3D &pos, Vector3D &vel);
+	Body(string &namestring, double &m, double &rad, Vector3D &pos, Vector3D &vel);
 
-	Body(string &namestring, double &m, double &rad, double semimaj, double ecc, double inc, double trueAnom, double longascend, double argper, double G, double totalMass);
+	Body(string &namestring, double &m, double &rad, double semimaj, double ecc, double inc, double time, double longascend, double argper, double G, double totalMass);
 	virtual ~Body();
 
 	/* Accessor methods */
@@ -97,6 +97,7 @@ public:
 	void calcOrbitFromVector(double G, double totmass); // Calculate orbital elements from position and velocity
 	void calcVectorFromOrbit(double G, double totmass); // Calculate position and velocity from orbital elements
 	double calcPeriod(double G, double totalMass);
+
 	// N Body Calculation Methods
 
 	void calcTimestep(double greekEta); // Calculates the preferred timestep given Body's state vectors
@@ -173,7 +174,7 @@ protected:
 	double trueAnomaly;
 	double meanAnomaly;
 	double eccentricAnomaly;
-	double argumentPeriapsis; // This may be more useful to store than longitude of periapsis
+	double argumentPeriapsis;
 	double longitudePeriapsis;
 	double longitudeAscendingNode;
 
