@@ -23,11 +23,18 @@
 #include <sstream>
 using namespace std;
 
+
+// Reads in the parameters of the input file
 int readParameters(ifstream &inputStream, string &prefixString, int &nTime, int &nLatitude, int &nLongitude, double &PsToPo, 
 		    double &mstar, double &lstar, double &Teff, double &mplanet, double &obliquity, double &semi_maj, double &ecc, 
 		    double &inc, double &longascend, double &argper);
-double safeAcos(double x); // Simple function to stop acos becoming infinite if abs(x) > 1.0
 
+// Calculates the flux between star and planet
+void calcFlux(Star &star, Planet &planet, double &longitude, double &latitude, double &hourAngle, 
+	      double &flux, double &altitude, double &azimuth,
+	      double &time, double &Pspin, double &obliquity);
+
+double safeAcos(double x); // Simple function to stop acos becoming infinite if abs(x) > 1.0
 
 int main()
     {
@@ -35,18 +42,15 @@ int main()
       int success;    
       string fileString, numString, prefixString;
       char inputFile[100], outputFile[100];
-
-
-      Vector3D zvector(0.0,0.0,1.0);
-
+      
     int nTime, nLongitude, nLatitude, nlambda;
     string starname, planetname;
     double mstar, radstar, lstar, totalMass, G;
     double mplanet, radplanet, obliquity;
-    double long_apparent, dlat, dlong, rdotn;
+    double dlat, dlong;
     double semimaj, ecc, inc, longascend, argper, time;
     double PsToPo, Teff, Porbit, Pspin, dt;
-    double noon, declination;
+
 
     FILE * output, *outputlog;
 
@@ -99,6 +103,8 @@ int main()
     Planet planet(planetname, mplanet, radplanet, semimaj, ecc, inc, time,
 	    longascend, argper, G, totalMass);
 
+    star.setLuminosity(lstar);
+
     // Set up time parameters
 
     Porbit
@@ -127,6 +133,7 @@ int main()
     for (int j = 0; j < nLongitude; j++)
 	{
 	longitude[j] = j * dlong;
+
 	}
     for (int k = 0; k < nLatitude; k++)
 	{
@@ -153,7 +160,22 @@ int main()
 	planet.calcTrueAnomaly(G, totalMass, time);
 	planet.calcVectorFromOrbit(G, totalMass);
 
-	Vector3D pos = planet.getPosition();
+	// Loop over longitude and latitude
+
+	for (int j=0; j<nLongitude; j++)
+		 {
+		   for (int k=0; k< nLatitude; k++)
+			    {
+			      flux[j][k] = 0.0; 
+			      // Call flux calculation function
+	
+			      calcFlux(star,planet,longitude[j], latitude[k],hourAngle[j], 
+				       flux[j][k], altitude[j][k], azimuth[j][k],
+				       time, Pspin, obliquity);
+				}
+		 }
+
+	/*Vector3D pos = planet.getPosition();
 
 	double magpos = pos.magVector();
 
@@ -202,7 +224,7 @@ int main()
 		}
 
 	    //hourAngle[j] = noon - longitude[j];
-	   /* if(hourAngle[j] < -pi)
+	    if(hourAngle[j] < -pi)
 		{
 		hourAngle[j]=hourAngle[j] + 2.0*pi;
 		}
@@ -210,7 +232,7 @@ int main()
 		{
 		hourAngle[j] = -2.0*pi +hourAngle[j];
 		}
-	    */
+	    
 	    cout << "        longitude  " << longitude[j] << "  hour angle " << hourAngle[j] << endl;
 	    // Loop over latitude
 
@@ -286,7 +308,7 @@ int main()
 
 
 		}
-	    }
+		}*/
 
 	//Send the data to file
 
@@ -294,7 +316,7 @@ int main()
 
 	fprintf(outputlog,
 		"%+.4E  %+.4E  %+.4E  %+.4E  %+.4E  %+.4E  %+.4E  %+.4E \n",
-		time, Porbit, Pspin, magpos, planet.getTrueAnomaly(),
+		time, Porbit, Pspin, (planet.getPosition()).magVector(), planet.getTrueAnomaly(),
 		planet.getPosition().elements[0],
 		planet.getPosition().elements[1],
 		planet.getPosition().elements[2]);
@@ -348,7 +370,7 @@ int readParameters(ifstream &inputStream, string &prefixString, int &nTime, int 
 
   string par, line;
   double mplanetearth;
-    double mEarthToMSol = 3.0034e-6;
+  double mEarthToMSol = 3.0034e-6;
 
  // check that the file exists as cpp does not check
     //and it just returns 0 if it doesnt exist
@@ -457,6 +479,127 @@ int readParameters(ifstream &inputStream, string &prefixString, int &nTime, int 
     inputStream.close();
     return 0;
 }
+
+
+// Function takes in Star and Planet Objects as input, calculates longitude/latitude flux map from star
+
+void calcFlux(Star &star, Planet &planet,double &longitude, double &latitude, double &hourAngle, 
+	      double &flux, double &altitude, double &azimuth,
+	      double &time, double &Pspin, double &obliquity)
+{
+  double noon, rdotn,declination, long_apparent;
+  double magpos,lstar;
+  Vector3D pos, unitpos;
+  Vector3D zvector(0.0,0.0,1.0);
+
+  // Get position of planet relative to star
+  pos = (star.getPosition()).relativeVector(planet.getPosition());
+  magpos = pos.magVector();
+  unitpos = pos.unitVector();
+  lstar = star.getLuminosity();
+
+  // Longitude corresponding to noon - assumes noon at t=0 is 0
+  //noon = fmod(2.0 * pi * time / Pspin, 2.0 * pi);
+  
+  // Declination of the Sun - angle between planet's position vector and equator (at noon)
+  
+  Vector3D decVector(unitpos.elements[0], unitpos.elements[1],
+		unitpos.elements[2]);
+
+  // Rotate this vector if planet has non-zero obliquity
+  if (obliquity != 0.0)
+    {
+      decVector.rotateX(obliquity);
+    }
+
+  rdotn = unitpos.dotProduct(decVector);
+  declination = safeAcos(rdotn);
+
+  //cout << "Time "<< time<< "  Noon  " << noon << "  Declination  "<<declination << endl;
+  // Now begin calculation over latitude and longitude points
+
+  // Rotate planet according to its spin period
+
+  long_apparent = fmod(longitude + 2.0 * pi * time / Pspin, 2.0 * pi);
+
+  // Calculate hour angle - distance between current longitude and noon
+
+  // Distance between longitude and noon = hourAngle
+  // hour angle between -180 and +180
+
+  Vector3D longSurface(cos(long_apparent), sin(long_apparent), 0.0);
+
+  rdotn = unitpos.dotProduct(longSurface);
+  hourAngle = acos(rdotn);
+
+  if((unitpos.crossProduct(longSurface)).dotProduct(zvector) > 0.0)
+    {
+      hourAngle = -hourAngle;
+    }
+
+  
+  //cout << "        longitude  " << longitude << "  hour angle " << hourAngle << endl;
+
+  // construct surface normal vector at this longitude and latitude
+
+  Vector3D surface(sin(latitude) * cos(long_apparent), sin(latitude) * sin(long_apparent), cos(latitude));
+
+  surface = surface.unitVector();
+
+  // If necessary, rotate surface vector by obliquity
+  
+  if (obliquity != 0.0)
+    {
+      surface.rotateX(obliquity);
+    }
+  
+  // take the dot product with the unit position vector
+  
+  rdotn = unitpos.dotProduct(surface);
+ 
+  // Calculate fluxes
+  // if position.surface is less than zero, long/lat location is not illuminated
+  
+  if (rdotn > 0.0)
+    {
+      
+      flux = flux + lstar * rdotn / (4.0 * pi * magpos * magpos);
+    } 
+
+  // Calculate altitude and azimuthal position on sky, and angular size
+  // Formulae not exactly as used normally
+  // As we measure latitudes from 0 to 180, not -90 to 90, some sines have become cosines, and vice versa
+  // (some extra plus and minus signs as a result)
+  
+  //altitude[j][k] = cos(declination) * cos(latitude[k]) * cos(
+  //	hourAngle[j]) + sin(declination) * sin(latitude[k]);  // These calculations assume lat->0,180 deg
+
+  altitude = cos(declination) * cos(hourAngle) * sin(latitude) - sin(declination) * cos(latitude);  // These calculations assume lat->-90,90 deg
+  altitude = asin(altitude);
+
+  // Azimuth angle measured from north, clockwise
+
+  if(cos(altitude)*cos(latitude)!=0.0){
+
+    azimuth = (sin(altitude)*sin(latitude) - sin(declination))/(cos(altitude *cos(latitude)));
+
+    azimuth = safeAcos(azimuth);
+  }
+  else
+    {
+      azimuth = 0.0;
+    }
+
+  // If hour angle positive (afternoon) azimuth is > 180
+  
+  if(hourAngle>0.0)
+    {
+      azimuth = 2.0*pi - azimuth;
+    }
+  
+}
+
+
 
 
 // Simple function to stop acos becoming infinite if abs(x) > 1.0
