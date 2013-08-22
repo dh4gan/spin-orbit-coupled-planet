@@ -23,32 +23,26 @@
 #include <sstream>
 using namespace std;
 
-// Simple function to stop acos becoming infinite if abs(x) > 1.0
+int readParameters(ifstream &inputStream, string &prefixString, int &nTime, int &nLatitude, int &nLongitude, double &PsToPo, 
+		    double &mstar, double &lstar, double &Teff, double &mplanet, double &obliquity, double &semi_maj, double &ecc, 
+		    double &inc, double &longascend, double &argper);
+double safeAcos(double x); // Simple function to stop acos becoming infinite if abs(x) > 1.0
 
-double safeAcos(double x)
-    {
-    if (x < -1.0)
-	x = -1.0;
-    else if (x > 1.0)
-	x = 1.0;
-    return acos(x);
-    }
 
 int main()
     {
 
-    string par;
-    string line;
-    string fileString, numString, prefixString;
-    char inputFile[100], outputFile[100];
+      int success;    
+      string fileString, numString, prefixString;
+      char inputFile[100], outputFile[100];
 
-    double mEarthToMSol = 3.0034e-6;
-    Vector3D zvector(0.0,0.0,1.0);
+
+      Vector3D zvector(0.0,0.0,1.0);
 
     int nTime, nLongitude, nLatitude, nlambda;
     string starname, planetname;
     double mstar, radstar, lstar, totalMass, G;
-    double mplanet, mplanetearth, radplanet, obliquity;
+    double mplanet, radplanet, obliquity;
     double long_apparent, dlat, dlong, rdotn;
     double semimaj, ecc, inc, longascend, argper, time;
     double PsToPo, Teff, Porbit, Pspin, dt;
@@ -71,112 +65,15 @@ int main()
 
     strcpy(inputFile, fileString.c_str());
 
+    // Call Read in function
+
     ifstream myfile(inputFile);
-    // check that the file exists as cpp does not check
-    //and it just returns 0 if it doesnt exist
-    if (myfile == 0)
-	{
-	cout << "No Input file found" << endl;
-	return 0;
-	}
-
-    // Then loop through each line using getline and then
-    //assign to vectors
-    while (getline(myfile, line))
-	{
-	istringstream iss(line);
-	iss >> par;
-
-	if (par == "OutputPrefix")
-	    {
-
-	    iss >> prefixString;
-	    prefixString = prefixString + '.';
-	    }
-
-	if (par == "NTime")
-	    {
-	    iss >> nTime;
-
-	    }
-
-	if (par == "NLatitude")
-	    {
-	    iss >> nLatitude;
-
-	    }
-
-	if (par == "NLongitude")
-	    {
-	    iss >> nLongitude;
-
-	    }
-
-	if (par == "PsToPo")
-	    {
-	    iss >> PsToPo;
-
-	    }
-
-	if (par == "StarMass")
-	    {
-	    iss >> mstar;
-
-	    }
-
-	if (par == "StarLum")
-	    {
-	    iss >> lstar;
-
-	    }
-
-	if (par == "StarTeff")
-	    {
-	    iss >> Teff;
-	    }
-
-	if (par == "PlanetMass")
-	    {
-	    iss >> mplanetearth; // Read in in earth masses
-	    mplanet = mplanetearth * mEarthToMSol; // convert to Solar masses
-
-	    }
-
-	if (par == "Obliquity")
-	    {
-	    iss >> obliquity;
-	    }
-
-	if (par == "SemiMajorAxis")
-	    {
-	    iss >> semimaj;
-	    }
-	if (par == "Eccentricity")
-	    {
-	    iss >> ecc;
-
-	    }
-
-	if (par == "Inclination")
-	    {
-	    iss >> inc;
-
-	    }
-
-	if (par == "AscendingNode")
-	    {
-	    iss >> longascend;
-
-	    }
-
-	if (par == "Periapsis")
-	    {
-	    iss >> argper;
-
-	    }
-
-	}
-    myfile.close();
+    success = readParameters(myfile, prefixString, nTime, nLatitude, nLongitude, PsToPo, 
+			     mstar, lstar, Teff, mplanet, obliquity, semimaj, ecc, 
+			     inc, longascend, argper);
+    if(success==-1) {
+      return 0;
+    }
 
     cout << "Read in " << fileString << endl;
 
@@ -441,4 +338,133 @@ int main()
     fclose(outputlog);
     // End of program
     return 0;
+    }
+
+
+int readParameters(ifstream &inputStream, string &prefixString, int &nTime, int &nLatitude, int &nLongitude, double &PsToPo, 
+		    double &mstar, double &lstar, double &Teff, double &mplanet, double &obliquity, double &semimaj, double &ecc, 
+		    double &inc, double &longascend, double &argper)
+{
+
+  string par, line;
+  double mplanetearth;
+    double mEarthToMSol = 3.0034e-6;
+
+ // check that the file exists as cpp does not check
+    //and it just returns 0 if it doesnt exist
+    if (inputStream == 0)
+	{
+	cout << "No Input file found" << endl;
+	return -1;
+	}
+
+    // Then loop through each line using getline and then
+    //assign to vectors
+    while (getline(inputStream, line))
+	{
+	istringstream iss(line);
+	iss >> par;
+
+	if (par == "OutputPrefix")
+	    {
+
+	    iss >> prefixString;
+	    prefixString = prefixString + '.';
+	    }
+
+	if (par == "NTime")
+	    {
+	    iss >> nTime;
+
+	    }
+
+	if (par == "NLatitude")
+	    {
+	    iss >> nLatitude;
+
+	    }
+
+	if (par == "NLongitude")
+	    {
+	    iss >> nLongitude;
+
+	    }
+
+	if (par == "PsToPo")
+	    {
+	    iss >> PsToPo;
+
+	    }
+
+	if (par == "StarMass")
+	    {
+	    iss >> mstar;
+
+	    }
+
+	if (par == "StarLum")
+	    {
+	    iss >> lstar;
+
+	    }
+
+	if (par == "StarTeff")
+	    {
+	    iss >> Teff;
+	    }
+
+	if (par == "PlanetMass")
+	    {
+	    iss >> mplanetearth; // Read in in earth masses
+	    mplanet = mplanetearth * mEarthToMSol; // convert to Solar masses
+
+	    }
+
+	if (par == "Obliquity")
+	    {
+	    iss >> obliquity;
+	    }
+
+	if (par == "SemiMajorAxis")
+	    {
+	    iss >> semimaj;
+	    }
+	if (par == "Eccentricity")
+	    {
+	    iss >> ecc;
+
+	    }
+
+	if (par == "Inclination")
+	    {
+	    iss >> inc;
+
+	    }
+
+	if (par == "AscendingNode")
+	    {
+	    iss >> longascend;
+
+	    }
+
+	if (par == "Periapsis")
+	    {
+	    iss >> argper;
+
+	    }
+
+	}
+    inputStream.close();
+    return 0;
+}
+
+
+// Simple function to stop acos becoming infinite if abs(x) > 1.0
+double safeAcos(double x)
+    {
+    if (x < -1.0)
+	x = -1.0;
+    else if (x > 1.0)
+	x = 1.0;
+    return acos(x);
     }
