@@ -7,6 +7,7 @@
 
 #include "Star.h"
 #include "RadiationConstants.h"
+
 #include <iostream>
 /* Constructors and Destructor */
 
@@ -80,6 +81,6 @@ void Star::calculateSingleHZ() {
 	// Convert this flux into a distance
 
 	innerHZ = sqrt(luminosity/Sinner);
-	outerHZ = sqrt(luminosity/Sinner);
+	outerHZ = sqrt(luminosity/Souter);
 
 }

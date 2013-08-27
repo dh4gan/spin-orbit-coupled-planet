@@ -5,7 +5,9 @@ NLongitude	100
 PsToPo		2.7e-3
 StarMass   	1.0
 StarLum    	1.0
+StarTeff	5700.0
 PlanetMass 	1.0
+PlanetAlbedo	0.3
 Obliquity	0.411
 SemiMajorAxis	1.0
 Eccentricity	0.0
