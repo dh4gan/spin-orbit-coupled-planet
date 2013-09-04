@@ -120,6 +120,7 @@ int main()
   // Set up array to store fluxes, and altitude and azimuth of star
 
   double flux[nLongitude][nLatitude];
+  double darkness[nLongitude][nLatitude];
   double planetTeff[nLongitude][nLatitude];
   double Ngamma[nLongitude][nLatitude];
   double altitude[nLongitude][nLatitude];
@@ -137,7 +138,10 @@ int main()
   for (int j = 0; j < nLongitude; j++)
     {
       longitude[j] = j * dlong;
-
+      for(int k=0;k<nLatitude; k++)
+	  {
+	  darkness[j][k]=0.0;
+	  }
     }
   for (int k = 0; k < nLatitude; k++)
     {
@@ -183,6 +187,11 @@ int main()
 	      calcFlux(star,planet,longitude[j], latitude[k],hourAngle[j], 
 		       flux[j][k], altitude[j][k], azimuth[j][k],
 		       time, Pspin, obliquity);
+
+	      if(flux[j][k]==0.0)
+		  {
+		  darkness[j][k] = darkness[j][k]+dt;
+		  }
 
 	      flux[j][k] = flux[j][k]*lsol/(AU*AU);
 
@@ -234,8 +243,8 @@ int main()
 	{
 	  for (int k = 0; k < nLatitude; k++)
 	    {
-	      fprintf(output, "%+.4E  %+.4E  %+.4E  %+.4E  %+.4E  %+.4E  %+.4E  %+.4E \n",
-		      longitude[j], latitude[k], flux[j][k], planetTeff[j][k], Ngamma[j][k],
+	      fprintf(output, "%+.4E  %+.4E  %+.4E  %+.4E  %+.4E  %+.4E  %+.4E  %+.4E  %+.4E \n",
+		      longitude[j], latitude[k], flux[j][k], planetTeff[j][k], Ngamma[j][k], darkness[j][k],
 		      altitude[j][k], azimuth[j][k], hourAngle[j]);
 	    }
 	}
