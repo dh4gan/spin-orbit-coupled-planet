@@ -483,7 +483,7 @@ void calcFlux(Star &star, Planet &planet,double &longitude, double &latitude, do
 
   if(cos(altitude)*cos(latitude)!=0.0){
 
-    azimuth = (sin(altitude)*sin(latitude) - sin(declination))/(cos(altitude *cos(latitude)));
+    azimuth = (sin(altitude)*sin(latitude) - sin(declination))/(cos(altitude)*sin(latitude));
     azimuth = safeAcos(azimuth);
   }
   else
