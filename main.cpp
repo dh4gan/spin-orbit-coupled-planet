@@ -417,7 +417,6 @@ void calcFlux(Star &star, Planet &planet,double &longitude, double &latitude, do
   rdotn = unitpos.dotProduct(decVector);
   declination = safeAcos(rdotn);
 
-  //cout << "Time "<< time<< "  Noon  " << noon << "  Declination  "<<declination << endl;
   // Now begin calculation over latitude and longitude points
 
   // Rotate planet according to its spin period
@@ -432,15 +431,14 @@ void calcFlux(Star &star, Planet &planet,double &longitude, double &latitude, do
   Vector3D longSurface(cos(long_apparent), sin(long_apparent), 0.0);
 
   rdotn = unitpos.dotProduct(longSurface);
-  hourAngle = acos(rdotn);
+  hourAngle = safeAcos(rdotn);
 
   if((unitpos.crossProduct(longSurface)).dotProduct(zvector) > 0.0)
     {
       hourAngle = -hourAngle;
     }
 
-  
-  //cout << "        longitude  " << longitude << "  hour angle " << hourAngle << endl;
+  //cout << "        longitude  " << longitude << "  hour angle " << hourAngle << " Declination "<< declination << endl;
 
   // construct surface normal vector at this longitude and latitude
 
@@ -473,17 +471,17 @@ void calcFlux(Star &star, Planet &planet,double &longitude, double &latitude, do
   // As we measure latitudes from 0 to 180, not -90 to 90, some sines have become cosines, and vice versa
   // (some extra plus and minus signs as a result)
   
-  //altitude[j][k] = cos(declination) * cos(latitude[k]) * cos(
-  //	hourAngle[j]) + sin(declination) * sin(latitude[k]);  // These calculations assume lat->0,180 deg
+  //altitude = cos(declination) * cos(latitude) * cos(hourAngle) + sin(declination) * sin(latitude);  // These calculations assume lat->-90,90 deg
 
-  altitude = cos(declination) * cos(hourAngle) * sin(latitude) - sin(declination) * cos(latitude);  // These calculations assume lat->-90,90 deg
+  altitude = - cos(declination) * cos(hourAngle) * sin(latitude) + sin(declination) * cos(latitude);  // These calculations assume lat->0,180 deg
   altitude = asin(altitude);
 
   // Azimuth angle measured from north, clockwise
 
-  if(cos(altitude)*cos(latitude)!=0.0){
+  if(cos(altitude)*sin(latitude)!=0.0){
 
-    azimuth = (sin(altitude)*sin(latitude) - sin(declination))/(cos(altitude)*sin(latitude));
+	//azimuth = (sin(declination) - sin(altitude)*cos(latitude))/(cos(altitude)*cos(latitude)); // These calculations assume lat->-90, 90 deg
+    azimuth = (sin(altitude)*sin(latitude) - sin(declination))/(cos(altitude)*sin(latitude)); // These calculations assume lat->0, 180 deg
     azimuth = safeAcos(azimuth);
   }
   else
