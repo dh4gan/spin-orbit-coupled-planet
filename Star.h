@@ -7,7 +7,6 @@
 
 #include "Body.h"
 
-
 using namespace std;
 
 #ifndef STAR_H_
@@ -50,6 +49,7 @@ public:
 	// Calculation Methods
 
 	void calculateBlackbodySpectrum();
+	double calculatePeakWavelength();
 	void calculateSingleHZ();
 
 protected:

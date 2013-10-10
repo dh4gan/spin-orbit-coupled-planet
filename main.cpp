@@ -25,8 +25,8 @@ using namespace std;
 
 
 // Reads in the parameters of the input file
-int readParameters(ifstream &inputStream, string &prefixString, int &nTime, int &nLatitude, int &nLongitude, double &PsToPo, 
-		   double &mstar, double &lstar, double &Teff, double &mplanet, double &albedo, double &obliquity, double &semi_maj, double &ecc,
+int readParameters(ifstream &inputStream, string &prefixString, double &dt, int &nLatitude, int &nLongitude, double &PsToPo,
+		   double &mstar, double &radstar, double &lstar, double &Teff, double &mplanet, double &albedo, double &obliquity, double &semi_maj, double &ecc,
 		   double &inc, double &longascend, double &argper);
 
 // Calculates the flux between star and planet
@@ -45,17 +45,18 @@ int main()
       
   int nTime, nLongitude, nLatitude, nlambda;
   string starname, planetname;
-  double mstar, radstar, lstar, totalMass, G;
+  double mstar, radstar,radstarcm, lstar, totalMass, G;
   double mplanet, radplanet, obliquity;
   double dlat, dlong, albedo;
   double semimaj, ecc, inc, longascend, argper, time;
-  double PsToPo, Teff, Porbit, Pspin, dt;
+  double PsToPo, Teff, Porbit, Pspin, dt,tmax;
+  double percent,timecounter;
 
   double hplanck = 6.626e-34;
   double c = 2.9e8;
   double stefan = 5.67e-8;
 
-  FILE * output, *outputlog;
+  FILE * output, *outputlog, *info;
 
   printf("  \n");
   printf("*********************************************** \n");
@@ -75,8 +76,8 @@ int main()
   // Call Read in function
 
   ifstream myfile(inputFile);
-  success = readParameters(myfile, prefixString, nTime, nLatitude, nLongitude, PsToPo, 
-			   mstar, lstar, Teff, mplanet, albedo, obliquity, semimaj, ecc,
+  success = readParameters(myfile, prefixString, dt, nLatitude, nLongitude, PsToPo,
+			   mstar, radstar, lstar, Teff, mplanet, albedo, obliquity, semimaj, ecc,
 			   inc, longascend, argper);
   if(success==-1) {
     return 0;
@@ -84,9 +85,7 @@ int main()
 
   cout << "Read in " << fileString << endl;
 
-  // Number of zeros for output files
 
-  double nzeros = int(log10(nTime) + 1);
 
   // set up Star and Planet Objects
 
@@ -106,6 +105,15 @@ int main()
   Planet planet(planetname, mplanet, radplanet, semimaj, ecc, inc, time,
 		longascend, argper, G, totalMass);
 
+  if(lstar==0.0)
+	{
+		radstarcm = radstar*1.496e13;
+		lstar = 4.0*pi*radstarcm*radstarcm*stefan*Teff*Teff*Teff*Teff;
+		lstar = lstar/3.9e33;
+	}
+
+			star.setLuminosity(lstar);
+
   star.setLuminosity(lstar);
 
   // Set up time parameters
@@ -115,7 +123,18 @@ int main()
 	   / (G * totalMass));
   Pspin = Porbit * PsToPo;
 
-  dt = Porbit / float(nTime);
+  tmax = max(Porbit,Pspin);
+  nTime = int(tmax /dt)+1;
+
+  printf("Maximum Orbital Period is %+.4E years \n", tmax);
+  printf("Planet's Spin Orbit Ratio is %+.4E \n", PsToPo);
+  printf("Planet's Spin Period is %+.4E \n", Pspin);
+  printf("Timestep is %+.4E years \n", dt);
+  printf("Number of Timesteps required is %i \n", nTime);
+
+  // Number of zeros for output files
+
+   double nzeros = int(log10(nTime) + 1);
 
   // Set up array to store fluxes, and altitude and azimuth of star
 
@@ -148,6 +167,9 @@ int main()
       latitude[k] = k * dlat;
     }
 
+  double fluxmax = -1.0e30; // Stores maximum flux received at any lat/long point during simulation
+
+
   // Set up variables for calculating photon fluxes
 
   double lambda_peak = 2.9e-3/star.getTeff(); // Peak wavelength in SI (Wien's Law)
@@ -156,17 +178,36 @@ int main()
 
   // Set up output log file
 
-  fileString = prefixString + "log";
+  fileString = prefixString + "position";
 
   strcpy(outputFile, fileString.c_str());
 
   outputlog = fopen(outputFile, "w");
 
-  // Begin Loop over time
+  // Write system parameters to a .info file for use when plotting later
 
+  fileString = prefixString+"info";
+  strcpy(outputFile, fileString.c_str());
+
+  info = fopen(outputFile,"w");
+
+  fprintf(info,"%i \n", nTime);
+  fprintf(info, "%+.4E %+.4E %+.4E \n", star.getRadius(), star.getTeff(), star.calculatePeakWavelength());
+  fflush(info);
+
+  // Begin Loop over time
+  percent = 0.0;
   for (int i = 0; i < nTime; i++)
     {
 
+	  percent = percent +dt/Porbit;
+
+	  if(percent>10.0)
+	  {
+		  timecounter= timecounter +10.0;
+		  printf("Run %f %% complete \n", timecounter);
+		  percent = 0.0;
+	  }
       // Update time
       time = i * dt;
 
@@ -188,12 +229,19 @@ int main()
 		       flux[j][k], altitude[j][k], azimuth[j][k],
 		       time, Pspin, obliquity);
 
+
 	      if(flux[j][k]==0.0)
 		  {
 		  darkness[j][k] = darkness[j][k]+dt;
 		  }
 
 	      flux[j][k] = flux[j][k]*lsol/(AU*AU);
+
+
+	      if(flux[j][k]>fluxmax)
+	      	{
+	      		fluxmax = flux[j][k];
+	      	}
 
 	      // Calculate equilibrium temperature (assuming a fixed albedo)
 
@@ -254,13 +302,18 @@ int main()
     }
 
   fclose(outputlog);
+
+  // Write maximum flux to info file
+  fprintf(info, "%+.4E \n", fluxmax);
+  fclose(info);
+
   // End of program
   return 0;
 }
 
 
-int readParameters(ifstream &inputStream, string &prefixString, int &nTime, int &nLatitude, int &nLongitude, double &PsToPo, 
-		   double &mstar, double &lstar, double &Teff, double &mplanet, double &albedo, double &obliquity, double &semimaj, double &ecc,
+int readParameters(ifstream &inputStream, string &prefixString, double &dt, int &nLatitude, int &nLongitude, double &PsToPo,
+		   double &mstar, double &radstar, double &lstar, double &Teff, double &mplanet, double &albedo, double &obliquity, double &semimaj, double &ecc,
 		   double &inc, double &longascend, double &argper)
 {
 
@@ -290,9 +343,9 @@ int readParameters(ifstream &inputStream, string &prefixString, int &nTime, int 
 	  prefixString = prefixString + '.';
 	}
 
-      if (par == "NTime")
+      if (par == "Timestep")
 	{
-	  iss >> nTime;
+	  iss >> dt;
 
 	}
 
@@ -317,6 +370,12 @@ int readParameters(ifstream &inputStream, string &prefixString, int &nTime, int 
       if (par == "StarMass")
 	{
 	  iss >> mstar;
+
+	}
+
+      if (par == "StarRad")
+	{
+	  iss >> radstar;
 
 	}
 

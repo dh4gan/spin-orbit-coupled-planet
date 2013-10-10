@@ -7,7 +7,6 @@
 
 #include "Star.h"
 #include "RadiationConstants.h"
-
 #include <iostream>
 /* Constructors and Destructor */
 
@@ -61,6 +60,25 @@ void Star::calculateBlackbodySpectrum() {
 
 	}
 
+}
+
+double Star::calculatePeakWavelength()
+{
+	/* Written by D Forgan
+	 *
+	 * This method returns the peak wavelength of emission according to Wien's Law
+	 * (in centimetres)
+	 *
+	 */
+
+	if(Teff > 0.0)
+	{
+		return 2.8977685e-1/Teff;
+	}
+	else
+	{
+		return 0.0;
+	}
 }
 
 void Star::calculateSingleHZ() {
