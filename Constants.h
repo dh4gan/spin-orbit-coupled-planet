@@ -16,6 +16,8 @@ double AU = 1.496e11;
 double msol = 1.99e30;
 double lsol = 3.838e26;
 
+double fluxsol = lsol/(4.0*pi*AU*AU);
+
 
 
 

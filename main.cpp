@@ -235,7 +235,7 @@ int main()
 		  darkness[j][k] = darkness[j][k]+dt;
 		  }
 
-	      flux[j][k] = flux[j][k]*lsol/(AU*AU);
+	      flux[j][k] = flux[j][k]*fluxsol;
 
 
 	      if(flux[j][k]>fluxmax)
