@@ -15,9 +15,10 @@ double Gmau = 1.0;  // Value of G for solar mass-AU units (time units...2pi unit
 double AU = 1.496e11;
 double msol = 1.99e30;
 double lsol = 3.838e26;
+double rsol = 6.955e8;
 
 double fluxsol = lsol/(4.0*pi*AU*AU);
-
+//double fluxsol = 1;
 
 
 

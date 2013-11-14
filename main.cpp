@@ -25,7 +25,7 @@ using namespace std;
 
 
 // Reads in the parameters of the input file
-int readParameters(ifstream &inputStream, string &prefixString, double &dt, int &nLatitude, int &nLongitude, double &PsToPo,
+int readParameters(ifstream &inputStream, string &prefixString, double &dt, double &timeMultiplier, int &nLatitude, int &nLongitude, double &PsToPo,
 		   double &mstar, double &radstar, double &lstar, double &Teff, double &mplanet, double &albedo, double &obliquity, double &semi_maj, double &ecc,
 		   double &inc, double &longascend, double &argper);
 
@@ -45,12 +45,12 @@ int main()
       
   int nTime, nLongitude, nLatitude, nlambda;
   string starname, planetname;
-  double mstar, radstar,radstarcm, lstar, totalMass, G;
+  double mstar, radstar,radstarSI, lstar, totalMass, G;
   double mplanet, radplanet, obliquity;
   double dlat, dlong, albedo;
   double semimaj, ecc, inc, longascend, argper, time;
   double PsToPo, Teff, Porbit, Pspin, dt,tmax;
-  double percent,timecounter;
+  double percent,timecounter, timeMultiplier;
 
   double hplanck = 6.626e-34;
   double c = 2.9e8;
@@ -75,8 +75,10 @@ int main()
 
   // Call Read in function
 
+  timeMultiplier = 1; // default setting
+
   ifstream myfile(inputFile);
-  success = readParameters(myfile, prefixString, dt, nLatitude, nLongitude, PsToPo,
+  success = readParameters(myfile, prefixString, dt, timeMultiplier, nLatitude, nLongitude, PsToPo,
 			   mstar, radstar, lstar, Teff, mplanet, albedo, obliquity, semimaj, ecc,
 			   inc, longascend, argper);
   if(success==-1) {
@@ -107,9 +109,9 @@ int main()
 
   if(lstar==0.0)
 	{
-		radstarcm = radstar*1.496e13;
-		lstar = 4.0*pi*radstarcm*radstarcm*stefan*Teff*Teff*Teff*Teff;
-		lstar = lstar/3.9e33;
+		radstarSI = radstar*rsol;
+		lstar = 4.0*pi*radstarSI*radstarSI*stefan*Teff*Teff*Teff*Teff;
+		lstar = lstar/lsol;
 	}
 
 			star.setLuminosity(lstar);
@@ -124,6 +126,7 @@ int main()
   Pspin = Porbit * PsToPo;
 
   tmax = max(Porbit,Pspin);
+  tmax = tmax*timeMultiplier;
   nTime = int(tmax /dt)+1;
 
   printf("Maximum Orbital Period is %+.4E years \n", tmax);
@@ -139,6 +142,7 @@ int main()
   // Set up array to store fluxes, and altitude and azimuth of star
 
   double flux[nLongitude][nLatitude];
+  double integratedflux[nLongitude][nLatitude];
   double darkness[nLongitude][nLatitude];
   double planetTeff[nLongitude][nLatitude];
   double Ngamma[nLongitude][nLatitude];
@@ -160,6 +164,7 @@ int main()
       for(int k=0;k<nLatitude; k++)
 	  {
 	  darkness[j][k]=0.0;
+	  integratedflux[j][k] = 0.0;
 	  }
     }
   for (int k = 0; k < nLatitude; k++)
@@ -200,12 +205,12 @@ int main()
   for (int i = 0; i < nTime; i++)
     {
 
-	  percent = percent +dt/Porbit;
+	  percent = percent +dt/tmax;
 
-	  if(percent>10.0)
+	  if(percent>0.1)
 	  {
 		  timecounter= timecounter +10.0;
-		  printf("Run %f %% complete \n", timecounter);
+		  printf("Run %.0f %% complete \n", timecounter);
 		  percent = 0.0;
 	  }
       // Update time
@@ -242,6 +247,8 @@ int main()
 	      	{
 	      		fluxmax = flux[j][k];
 	      	}
+
+	      integratedflux[j][k] = integratedflux[j][k]+flux[j][k]*dt;
 
 	      // Calculate equilibrium temperature (assuming a fixed albedo)
 
@@ -307,12 +314,33 @@ int main()
   fprintf(info, "%+.4E \n", fluxmax);
   fclose(info);
 
+  // Write integrated flux to file
+
+  fileString = prefixString+"integrated";
+
+  strcpy(outputFile,fileString.c_str());
+  output = fopen(outputFile,"w");
+  fprintf(output, "%i %i \n", nLatitude, nLongitude);
+
+  for (int j = 0; j < nLongitude; j++)
+	{
+	  for (int k = 0; k < nLatitude; k++)
+	    {
+	      fprintf(output, "%+.4E  %+.4E  %+.4E  %+.4E \n",
+		      longitude[j], latitude[k], integratedflux[j][k], darkness[j][k]);
+	    }
+	}
+      fflush(output);
+      fclose(output);
+
+
+
   // End of program
   return 0;
 }
 
 
-int readParameters(ifstream &inputStream, string &prefixString, double &dt, int &nLatitude, int &nLongitude, double &PsToPo,
+int readParameters(ifstream &inputStream, string &prefixString, double &dt, double &timeMultiplier, int &nLatitude, int &nLongitude, double &PsToPo,
 		   double &mstar, double &radstar, double &lstar, double &Teff, double &mplanet, double &albedo, double &obliquity, double &semimaj, double &ecc,
 		   double &inc, double &longascend, double &argper)
 {
@@ -346,6 +374,12 @@ int readParameters(ifstream &inputStream, string &prefixString, double &dt, int 
       if (par == "Timestep")
 	{
 	  iss >> dt;
+
+	}
+
+      if (par == "TimeMultiplier")
+	{
+	  iss >> timeMultiplier;
 
 	}
 
@@ -522,7 +556,7 @@ void calcFlux(Star &star, Planet &planet,double &longitude, double &latitude, do
   if (rdotn > 0.0)
     {
       
-      flux = flux + lstar * rdotn / (4.0 * pi * magpos * magpos);
+      flux = lstar * rdotn / (4.0 * pi * magpos * magpos);
     } 
 
   // Calculate altitude and azimuthal position on sky, and angular size
