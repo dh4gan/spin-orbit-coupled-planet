@@ -25,24 +25,27 @@ using namespace std;
 
 
 // Reads in the parameters of the input file
-int readParameters(ifstream &inputStream, string &prefixString, double &dt, double &timeMultiplier, int &nLatitude, int &nLongitude, double &PsToPo,
-		   double &mstar, double &radstar, double &lstar, double &Teff, double &mplanet, double &albedo, double &obliquity, double &semi_maj, double &ecc,
-		   double &inc, double &longascend, double &argper);
+int readParameters(ifstream &inputStream, string &prefixString, double &dt,
+		double &timeMultiplier, int &nLatitude, int &nLongitude, double &PsToPo,
+		double &Pspin, double &mstar, double &radstar, double &lstar,
+		double &Teff, double &mplanet, double &albedo, double &obliquity,
+		double &semi_maj, double &ecc, double &inc, double &longascend,
+		double &argper);
 
 // Calculates the flux between star and planet
-void calcFlux(Star &star, Planet &planet, double &longitude, double &latitude, double &hourAngle, 
-	      double &flux, double &altitude, double &azimuth,
-	      double &time, double &Pspin, double &obliquity);
+void calcFlux(Star &star, Planet &planet, double &longitude, double &latitude,
+		double &hourAngle, double &flux, double &altitude, double &azimuth,
+		double &time, double &Pspin, double &obliquity);
 
 double safeAcos(double x); // Simple function to stop acos becoming infinite if abs(x) > 1.0
 
 int main()
 {
 
-  int success;    
+  int success;
   string fileString, numString, prefixString;
   char inputFile[100], outputFile[100];
-      
+
   int nTime, nLongitude, nLatitude, nlambda;
   string starname, planetname;
   double mstar, radstar,radstarSI, lstar, totalMass, G;
@@ -78,16 +81,16 @@ int main()
   timeMultiplier = 1; // default setting
 
   ifstream myfile(inputFile);
-  success = readParameters(myfile, prefixString, dt, timeMultiplier, nLatitude, nLongitude, PsToPo,
-			   mstar, radstar, lstar, Teff, mplanet, albedo, obliquity, semimaj, ecc,
-			   inc, longascend, argper);
-  if(success==-1) {
-    return 0;
+	success = readParameters(myfile, prefixString, dt, timeMultiplier,
+			nLatitude, nLongitude, PsToPo, Pspin, mstar, radstar, lstar, Teff,
+			mplanet, albedo, obliquity, semimaj, ecc, inc, longascend, argper);
+  if(success==-1)
+  {
+	printf("Error in readParameters \n");
+    return 1;
   }
 
-  cout << "Read in " << fileString << endl;
-
-
+  cout << fileString << "read in" << endl;
 
   // set up Star and Planet Objects
 
@@ -123,7 +126,17 @@ int main()
   Porbit
     = sqrt(4.0 * pi * pi * semimaj * semimaj * semimaj
 	   / (G * totalMass));
-  Pspin = Porbit * PsToPo;
+
+  // If specific spin period not set, then use PsToPo
+  if(Pspin==0.0 and PsToPo!=0.0)
+  {
+	  Pspin = Porbit * PsToPo;
+  }
+  else
+  {
+	  printf("Error! Pspin or PsToPo uninitialised! %+.4E  %+.4E \n", Pspin, PsToPo);
+	  return 1;
+  }
 
   tmax = max(Porbit,Pspin);
   tmax = tmax*timeMultiplier;
@@ -137,7 +150,7 @@ int main()
 
   // Number of zeros for output files
 
-   double nzeros = int(log10(nTime) + 1);
+  double nzeros = int(log10(nTime) + 1);
 
   // Set up array to store fluxes, and altitude and azimuth of star
 
@@ -226,11 +239,11 @@ int main()
 	{
 	  for (int k=0; k< nLatitude; k++)
 	    {
-	      flux[j][k] = 0.0; 
+	      flux[j][k] = 0.0;
 
 	      // Call flux calculation function
-	
-	      calcFlux(star,planet,longitude[j], latitude[k],hourAngle[j], 
+
+	      calcFlux(star,planet,longitude[j], latitude[k],hourAngle[j],
 		       flux[j][k], altitude[j][k], azimuth[j][k],
 		       time, Pspin, obliquity);
 
@@ -273,7 +286,7 @@ int main()
 	      planet.getPosition().elements[2]);
       fflush(outputlog);
 
-      // Now, write snapshot of latitude/longitude to file
+      /*// Now, write snapshot of latitude/longitude to file
 
       // Create filename
 
@@ -305,7 +318,7 @@ int main()
 	}
       fflush(output);
       fclose(output);
-
+*/
     }
 
   fclose(outputlog);
@@ -340,14 +353,20 @@ int main()
 }
 
 
-int readParameters(ifstream &inputStream, string &prefixString, double &dt, double &timeMultiplier, int &nLatitude, int &nLongitude, double &PsToPo,
-		   double &mstar, double &radstar, double &lstar, double &Teff, double &mplanet, double &albedo, double &obliquity, double &semimaj, double &ecc,
-		   double &inc, double &longascend, double &argper)
+int readParameters(ifstream &inputStream, string &prefixString, double &dt,
+		double &timeMultiplier, int &nLatitude, int &nLongitude, double &PsToPo,
+		double &Pspin, double &mstar, double &radstar, double &lstar,
+		double &Teff, double &mplanet, double &albedo, double &obliquity,
+		double &semimaj, double &ecc, double &inc, double &longascend,
+		double &argper)
 {
 
   string par, line;
   double mplanetearth;
   double mEarthToMSol = 3.0034e-6;
+
+  Pspin = 0.0;
+  PsToPo = 0.0;
 
   // check that the file exists as cpp does not check
   //and it just returns 0 if it doesnt exist
@@ -478,7 +497,7 @@ int readParameters(ifstream &inputStream, string &prefixString, double &dt, doub
 
 // Function takes in Star and Planet Objects as input, calculates longitude/latitude flux map from star
 
-void calcFlux(Star &star, Planet &planet,double &longitude, double &latitude, double &hourAngle, 
+void calcFlux(Star &star, Planet &planet,double &longitude, double &latitude, double &hourAngle,
 	      double &flux, double &altitude, double &azimuth,
 	      double &time, double &Pspin, double &obliquity)
 {
@@ -495,9 +514,9 @@ void calcFlux(Star &star, Planet &planet,double &longitude, double &latitude, do
 
   // Longitude corresponding to noon - assumes noon at t=0 is 0
   //noon = fmod(2.0 * pi * time / Pspin, 2.0 * pi);
-  
+
   // Declination of the Sun - angle between planet's position vector and equator (at noon)
-  
+
   Vector3D decVector(unitpos.elements[0], unitpos.elements[1],
 		     unitpos.elements[2]);
 
@@ -540,30 +559,30 @@ void calcFlux(Star &star, Planet &planet,double &longitude, double &latitude, do
   surface = surface.unitVector();
 
   // If necessary, rotate surface vector by obliquity
-  
+
   if (obliquity != 0.0)
     {
       surface.rotateX(obliquity);
     }
-  
+
   // take the dot product with the unit position vector
-  
+
   rdotn = unitpos.dotProduct(surface);
- 
+
   // Calculate fluxes
   // if position.surface is less than zero, long/lat location is not illuminated
-  
+
   if (rdotn > 0.0)
     {
-      
+
       flux = lstar * rdotn / (4.0 * pi * magpos * magpos);
-    } 
+    }
 
   // Calculate altitude and azimuthal position on sky, and angular size
   // Formulae not exactly as used normally
   // As we measure latitudes from 0 to 180, not -90 to 90, some sines have become cosines, and vice versa
   // (some extra plus and minus signs as a result)
-  
+
   //altitude = cos(declination) * cos(latitude) * cos(hourAngle) + sin(declination) * sin(latitude);  // These calculations assume lat->-90,90 deg
 
   altitude = - cos(declination) * cos(hourAngle) * sin(latitude) + sin(declination) * cos(latitude);  // These calculations assume lat->0,180 deg
@@ -583,12 +602,12 @@ void calcFlux(Star &star, Planet &planet,double &longitude, double &latitude, do
     }
 
   // If hour angle positive (afternoon) azimuth is > 180
-  
+
   if(hourAngle>0.0)
     {
       azimuth = 2.0*pi - azimuth;
     }
-  
+
 }
 
 
