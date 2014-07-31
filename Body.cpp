@@ -209,6 +209,7 @@ void Body::calcOrbitFromVector(double G, double totmass)
 	nplane.elements[0] = magOrbitalAngularMomentum;
 	nplane.elements[1] = 0.0;
 	nplane.elements[2] = 0.0;
+	nscalar = nplane.magVector();
 
 	}
     else

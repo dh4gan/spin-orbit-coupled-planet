@@ -121,12 +121,9 @@ int main()
 
     star.setLuminosity(lstar);
 
-    star.setLuminosity(lstar);
-
     // Set up time parameters
 
-    Porbit = sqrt(
-	    4.0 * pi * pi * semimaj * semimaj * semimaj / (G * totalMass));
+    Porbit = sqrt(4.0 * pi * pi * semimaj * semimaj * semimaj / (G * totalMass));
 
     // If specific spin period not set, then use PsToPo
     if (Pspin == 0.0 and PsToPo != 0.0)
