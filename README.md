@@ -3,6 +3,6 @@ with a user defined set of orbital elements and spin period.  The input paramete
 
 spinorbit_coupled_planet.params
 
-Outputs can be plotted using the python scripts in 
+Outputs can be plotted using the python scripts in dh4gan/plot-spin-orbit-coupled-planet 
 (requires numpy, matplotlib)
 
